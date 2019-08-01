@@ -25,7 +25,7 @@ public class Test {
 		// 得到 bean
 //		ac.getBean(CityService.class).query();
 
-		Person person = ac.getBean(Person.class);
+		ac.getBean("person");
 
 //		ApplicationContext bf = new ClassPathXmlApplicationContext("fff");
 		ac.close();

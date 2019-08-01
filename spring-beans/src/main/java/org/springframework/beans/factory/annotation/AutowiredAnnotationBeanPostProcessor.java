@@ -227,6 +227,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 	@Override
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
+		//  AutowiredAnnotationBeanPostProcessor类把正在被spring实例化的bean进行@Autowired和@Value扫描，
+		//  扫描到类里面属性和方法上面如果有注解，就会把对应的方法或者属性封装起来，最终封装成InjectionMetadata对象。
+		// 其实就是把bean中的有@Autowired或者@Value注解的属性或者方法封装成AutowiredFieldElement或者AutowiredMethodElement对象，
+		// 为后续IOC，依赖注入做准备。
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, beanType, null);
 		metadata.checkConfigMembers(beanDefinition);
 	}
@@ -237,6 +241,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			throws BeanCreationException {
 
 		// Let's check for lookup methods here..
+		// 处理look-method
 		if (!this.lookupMethodsChecked.contains(beanName)) {
 			try {
 				ReflectionUtils.doWithMethods(beanClass, method -> {
@@ -263,6 +268,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		// Quick check on the concurrent map first, with minimal locking.
 		Constructor<?>[] candidateConstructors = this.candidateConstructorsCache.get(beanClass);
+		// synchronized 的双重锁校验
 		if (candidateConstructors == null) {
 			// Fully synchronized resolution now...
 			synchronized (this.candidateConstructorsCache) {
@@ -270,6 +276,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				if (candidateConstructors == null) {
 					Constructor<?>[] rawCandidates;
 					try {
+						// 取出当前类中的所有构造器
 						rawCandidates = beanClass.getDeclaredConstructors();
 					}
 					catch (Throwable ex) {
@@ -277,23 +284,32 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 								"Resolution of declared constructors on bean Class [" + beanClass.getName() +
 								"] from ClassLoader [" + beanClass.getClassLoader() + "] failed", ex);
 					}
+					// candidates 用于存储候选构造器，主要存了加了注解的构造器，没有加了注解的构造器，candidates 就为空
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
+					// 加了注解的构造器
 					Constructor<?> requiredConstructor = null;
+					// 默认构造器
 					Constructor<?> defaultConstructor = null;
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
+					// isSynthetic() 表示当前的属性、类、方法是不是一个混合的
 					int nonSyntheticConstructors = 0;
 					for (Constructor<?> candidate : rawCandidates) {
+						// 不是混合的构造方法才进行推断，一般都不是混合的
 						if (!candidate.isSynthetic()) {
+							// 这个属性表示可用的构造方法的个数
 							nonSyntheticConstructors++;
 						}
 						else if (primaryConstructor != null) {
 							continue;
 						}
+						// 取出构造方法的注解里面的值，@Autowire 和 @Value
 						AnnotationAttributes ann = findAutowiredAnnotation(candidate);
 						if (ann == null) {
 							Class<?> userClass = ClassUtils.getUserClass(beanClass);
 							if (userClass != beanClass) {
 								try {
+									// 寻找父类是否有加了注解的构造方法，如果父类有就可以用父类的
+									// 因为当前类可能是一个 CGLIB 的代理类，所以当前类没有加了注解的构造器，就可以去父类中看有没有
 									Constructor<?> superCtor =
 											userClass.getDeclaredConstructor(candidate.getParameterTypes());
 									ann = findAutowiredAnnotation(superCtor);
@@ -307,25 +323,34 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
-										". Found constructor with 'required' Autowired annotation already: " +
-										requiredConstructor);
+												". Found constructor with 'required' Autowired annotation already: " +
+												requiredConstructor);
 							}
+							// 处理加了@Autowire 注解的构造方法，required 为 @Autowire 里面的属性 require 的值，默认为true
 							boolean required = determineRequiredStatus(ann);
 							if (required) {
 								if (!candidates.isEmpty()) {
 									throw new BeanCreationException(beanName,
 											"Invalid autowire-marked constructors: " + candidates +
-											". Found constructor with 'required' Autowired annotation: " +
-											candidate);
+													". Found constructor with 'required' Autowired annotation: " +
+													candidate);
 								}
+								// 如果加了@Autowire注解，就将这个构造方法设置为 requiredConstructor
 								requiredConstructor = candidate;
 							}
+							// 加入 candidates 候选构造器中
 							candidates.add(candidate);
 						}
+						// 如果构造方法的参数个数为0，就将这个构造方法设置为默认的构造方法 defaultConstructor
+						// 默认的构造方法不加入 candidates 中
 						else if (candidate.getParameterCount() == 0) {
 							defaultConstructor = candidate;
 						}
 					}
+					// 如果候选构造器里面不为空，并且没有加了 @Autowire 的构造器，
+					// 并且默认构造方法不为空，就将默认方法加入candidates中
+					// 如果有加了 @Autowire 的构造器，就将这个构造器加入 candidateConstructors
+					// 如果没有加了注解的构造器的话，candidates 为空，进入下面的判断逻辑
 					if (!candidates.isEmpty()) {
 						// Add default constructor to list of optional constructors, as fallback.
 						if (requiredConstructor == null) {
@@ -341,9 +366,12 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						}
 						candidateConstructors = candidates.toArray(new Constructor<?>[0]);
 					}
+					// 如果仅有一个构造方法，并且这个构造方法的参数个数大于0（即不是默认的构造方法），
+					// 就可以确定要使用这个构造方法，将这个构造方法返回
 					else if (rawCandidates.length == 1 && rawCandidates[0].getParameterCount() > 0) {
 						candidateConstructors = new Constructor<?>[] {rawCandidates[0]};
 					}
+					// 下面两个判断都是基于有primaryConstructor（大概意思就是首要选择的构造器），一般不会有这个设置
 					else if (nonSyntheticConstructors == 2 && primaryConstructor != null &&
 							defaultConstructor != null && !primaryConstructor.equals(defaultConstructor)) {
 						candidateConstructors = new Constructor<?>[] {primaryConstructor, defaultConstructor};
@@ -358,6 +386,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 		}
+		// 返回可以使用的构造方法
 		return (candidateConstructors.length > 0 ? candidateConstructors : null);
 	}
 
@@ -365,6 +394,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	public PropertyValues postProcessPropertyValues(
 			PropertyValues pvs, PropertyDescriptor[] pds, Object bean, String beanName) throws BeanCreationException {
 
+		//找出类中被@Autowiring注解的属性和方法
+		//else if (field.isAnnotationPresent(Autowiring.class))
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
 			metadata.inject(bean, beanName, pvs);

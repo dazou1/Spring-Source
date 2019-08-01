@@ -7,6 +7,7 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -15,11 +16,8 @@ import javax.annotation.PreDestroy;
  * @Author dazou
  * @Date 2019-06-29 15:01
  */
-@Component
+@Service
 public class Person implements InitializingBean ,BeanPostProcessor{
-	private int i = 0;
-
-	BeanFactory beanFactory;
 
 	public Person(){
 		System.out.println("实例化一个对象");

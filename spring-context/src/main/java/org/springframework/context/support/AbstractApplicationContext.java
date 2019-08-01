@@ -589,6 +589,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				//初始化所有剩余的单例Bean(非惰性的)
 				//当scope=“singleton” (单例)时，默认以非懒加载的方式产生对象。
 				//当scope=“prototype” (多例)时，默认以懒加载的方式产生对象。
+				// 在九个地方调用了5个后置处理器
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
@@ -946,8 +947,6 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.setTempClassLoader(null);
 
 		// Allow for caching all bean definition metadata, not expecting further changes.
-		//缓存容器中所有注册的BeanDefinition元数据，以防被修改
-		//冻结所有的 bean 定义, 说明注册的 bean 定义将不被修改或任何进一步的处理
 		beanFactory.freezeConfiguration();
 
 		// Instantiate all remaining (non-lazy-init) singletons.

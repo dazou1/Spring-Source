@@ -702,14 +702,13 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		// Trigger initialization of all non-lazy singleton beans...
 		//触发所有非延迟加载的单例bean的初始化，主要步骤为getBean
 		for (String beanName : beanNames) {
-			//获取指定名称的Bean定义，合并父beanDefinition
+			//获取指定名称的 bean 的 bd，合并父beanDefinition
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
-			//Bean不是抽象的，是单态模式的，且lazy-init属性配置为false
+			//判断 Bean 不是抽象的，是单例模式的，且lazy-init属性配置为false（非懒加载）
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
-				//如果指定名称的bean是创建容器的Bean，如果是FactoryBean则加上&
+				//检查是不是 FactoryBean
 				if (isFactoryBean(beanName)) {
-					//FACTORY_BEAN_PREFIX=”&”，当Bean名称前面加”&”符号
-					//时，获取的是产生容器对象本身，而不是容器产生的Bean.
+					//FACTORY_BEAN_PREFIX=”&”，当Bean名称前面加”&”符号时，获取的是FactoryBean对象本身，而不是FactoryBean产生的Bean.
 					//调用getBean方法，触发容器对Bean实例化和依赖注入过程
 					final FactoryBean<?> factory = (FactoryBean<?>) getBean(FACTORY_BEAN_PREFIX + beanName);
 					//标识是否需要预实例化
@@ -725,7 +724,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 								((SmartFactoryBean<?>) factory).isEagerInit());
 					}
 					if (isEagerInit) {
-						//调用getBean方法，触发容器对Bean实例化和依赖注入过程
+						//调用getBean方法，触发容器对Bean实例化和依赖注入等过程
 						getBean(beanName);
 					}
 				}
@@ -811,7 +810,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 			//beanDefinitionMap 是 Map<String, BeanDefinition>，
-			//这里就是把 beanName 作为 key，beanDefinition 作为value，推到map里面
+			//这里就是把 beanName 作为 key，beanDefinition 作为value，存到 map 里面
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		}
 		else {
