@@ -45,21 +45,22 @@ import org.springframework.aop.SpringProxy;
  */
 
 /**
- * optimize ：用来控制通过 CG LIB 创建的代理是否使用激进的优化策略。 除非完全了解 AOP 代理如何处理优化，否则不推荐用户使用这个设直。
+ * optimize ：用来控制通过 CGLIB 创建的代理是否使用激进的优化策略。 除非完全了解 AOP 代理如何处理优化，否则不推荐用户使用这个设直。
  * 目前这个属性仅用于 CGLIB 代理，对于 JDK 动态代理（默认代理）无效。
  *
  * proxyTargetClass ：这个属性为 true 时， 目标类本身被代理而不是目标类的接口 。 如果这个属性值被设为true, CGLIB 代理将被创建，
- * 设直方式为＜aop:aspectj-autoproxy-proxy-target-class＝”true”／＞。
+ * 设值方式为＜aop:aspectj-autoproxy-proxy-target-class＝”true”／＞ 或者 @EnableAspectJAutoProxy(proxyTargetClass = true)
  *
  * hasNoUserSuppliedProxyInterfaces ：是否存在代理接口 。
  *
  * 如果目标对象实现了接口，默认情况下会采用 JDK 的动态代理实现 AOP。
- * 如果目标对象实现了接口，可以强制使用 CGLIB 实现 AOP。
+ * 如果目标对象实现了接口，可以强制使用 CGLIB 实现 AOP。proxyTargetClass = true
  * 如果目标对象没有实现接口，必须采用 CGLIB 库， Spring 会自动在 JDK 动态代理和 CGLIB 之间转换 。
  *
  * 如何强制使用 CGLIB 实现 AOP?
  * 添加 CGLIB 库， Spring_HOME/cglib/*.jar。
- * 在 Spring 配直文件中加入＜aop:aspectj-autoproxy-proxy-target-class＝”true"/>。
+ * 在 Spring 配直文件中加入＜aop:aspectj-autoproxy-proxy-target-class＝”true"/>
+ * 或者 @EnableAspectJAutoProxy(proxyTargetClass = true)
  *
  * JDK 动态代理和 CGLIB 字节码生成的区别？
  * JDK 动态代理只能对实现了接口的类生成代理，而不能针对类 。
@@ -70,18 +71,25 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 
 	@Override
 	public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
+		// 激进策略、proxyTargetClass 属性为 true、没有实现接口；三个条件符合一个就要使用 CGLIB 动态代理
 		if (config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config)) {
 			Class<?> targetClass = config.getTargetClass();
 			if (targetClass == null) {
 				throw new AopConfigException("TargetSource cannot determine target class: " +
 						"Either an interface or a target is required for proxy creation.");
 			}
+			// 如果设置了 ProxyTargetClass 为 true，但是目标类是一个接口的话，也是不能使用 CGLIB，因为子类不能去继承一个接口，
+			// 要去实现一个接口，所以还是要使用 JDK 动态代理。
+			// 如果目标类已经是一个代理类，那也不能使用 CGLIB 了，因为代理类已经继承了 Proxy，不能再使用 CGLIB 了，CGLIB 是基于继承的
+			// 而 Java 不支持多继承
 			if (targetClass.isInterface() || Proxy.isProxyClass(targetClass)) {
 				return new JdkDynamicAopProxy(config);
 			}
+			// CGLib
 			return new ObjenesisCglibAopProxy(config);
 		}
 		else {
+			// JDK 动态代理
 			return new JdkDynamicAopProxy(config);
 		}
 	}

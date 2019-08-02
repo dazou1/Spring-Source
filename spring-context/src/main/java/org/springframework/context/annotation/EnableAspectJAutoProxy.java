@@ -119,6 +119,8 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+// 添加了 @EnableAspectJAutoProxy 注解后就会使用 @Import 引入 AspectJAutoProxyRegistrar 这个类
+// 这个类是一个 ImportBeanDefinitionRegistrar，是 Spring 的一个拓展点之一，可以动态注册一个 BeanDefinition 到容器中
 @Import(AspectJAutoProxyRegistrar.class)
 public @interface EnableAspectJAutoProxy {
 

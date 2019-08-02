@@ -155,6 +155,9 @@ class CglibAopProxy implements AopProxy, Serializable {
 		return getProxy(null);
 	}
 
+	/**
+	 * 与我们正常创建一个 CGLIB 代理对象没什么区别
+	 */
 	@Override
 	public Object getProxy(@Nullable ClassLoader classLoader) {
 		if (logger.isDebugEnabled()) {
@@ -165,6 +168,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 			Class<?> rootClass = this.advised.getTargetClass();
 			Assert.state(rootClass != null, "Target class must be available for creating a CGLIB proxy");
 
+			// 目标类
 			Class<?> proxySuperClass = rootClass;
 			if (ClassUtils.isCglibProxyClass(rootClass)) {
 				proxySuperClass = rootClass.getSuperclass();
@@ -175,25 +179,28 @@ class CglibAopProxy implements AopProxy, Serializable {
 			}
 
 			// Validate the class, writing log messages as necessary.
-			//／验证 Class
+			// 验证 Class
 			validateClassIfNecessary(proxySuperClass, classLoader);
 
 			// Configure CGLIB Enhancer...
-			//／创建及配置 Enhancer
+			// 创建及配置增强器 Enhancer，就是 new Enhancer()
 			Enhancer enhancer = createEnhancer();
 			if (classLoader != null) {
+				// 设置 classLoader
 				enhancer.setClassLoader(classLoader);
 				if (classLoader instanceof SmartClassLoader &&
 						((SmartClassLoader) classLoader).isClassReloadable(proxySuperClass)) {
 					enhancer.setUseCache(false);
 				}
 			}
+			//设置父类，这一步就是告诉CGLIB，生成的子类要继承的父类是谁，当然就是目标类了
 			enhancer.setSuperclass(proxySuperClass);
 			enhancer.setInterfaces(AopProxyUtils.completeProxiedInterfaces(this.advised));
 			enhancer.setNamingPolicy(SpringNamingPolicy.INSTANCE);
 			enhancer.setStrategy(new ClassLoaderAwareUndeclaredThrowableStrategy(classLoader));
 
-			//设置拦截器,最重要步骤
+			// 设置拦截器,最重要步骤
+			// 回调，即会调用该类的 intercept 方法
 			Callback[] callbacks = getCallbacks(rootClass);
 			Class<?>[] types = new Class<?>[callbacks.length];
 			for (int x = 0; x < types.length; x++) {
@@ -205,7 +212,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 			enhancer.setCallbackTypes(types);
 
 			// Generate the proxy class and create a proxy instance.
-			//生成代理类以及创建代理
+			// 生成代理类以及创建代理,内部就是 enhancer.create() 创建代理
 			return createProxyClassAndInstance(enhancer, callbacks);
 		}
 		catch (CodeGenerationException | IllegalArgumentException ex) {
@@ -285,10 +292,10 @@ class CglibAopProxy implements AopProxy, Serializable {
 	/**
 	 * 将 advised 属性封装在 DynamicAdvisedInterceptor 并加入在 callbacks 中
 	 *
-	 * 我们 了解到 CGLIB 中对于方法的拦截是通过将自定义的拦截器（实现 MethodInterceptor 接口）
+	 * 我们了解到 CGLIB 中对于方法的拦截是通过将自定义的拦截器（实现 MethodInterceptor 接口）
 	 * 加入 Callback 中并在调用代理时直接激活拦截器中的 intercept 方法来实现的，
 	 * 那么在 getCallback 中正是实现了这样一个目的， DynamicAdvisedInterceptor 继承自 MethodInterceptor ，
-	 * 加入 Callback 中后，在再次调用代理时会直接调 用 DynamicAdvisedInterceptor 中的 intercept 方法，
+	 * 加入 Callback 中后，在再次调用代理时会直接调用 DynamicAdvisedInterceptor 中的 intercept 方法，
 	 * 由此推断，对于 CGLIB 方式实现的代理， 其核心逻辑必然在 DynamicAdvisedInterceptor 中的 intercept 中 。
 	 *
 	 */
@@ -671,7 +678,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 
 		@Override
 		@Nullable
-		//真正的处理逻辑
+		// 真正的处理逻辑
 		public Object intercept(Object proxy, Method method, Object[] args, MethodProxy methodProxy) throws Throwable {
 			Object oldProxy = null;
 			boolean setProxyContext = false;
@@ -687,7 +694,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 				target = targetSource.getTarget();
 				Class<?> targetClass = (target != null ? target.getClass() : null);
 
-				//获取拦截帮链
+				// 获取拦截器链
 				List<Object> chain = this.advised.getInterceptorsAndDynamicInterceptionAdvice(method, targetClass);
 				Object retVal;
 				// Check whether we only have one InvokerInterceptor: that is,
@@ -697,14 +704,14 @@ class CglibAopProxy implements AopProxy, Serializable {
 					// Note that the final invoker must be an InvokerInterceptor, so we know
 					// it does nothing but a reflective operation on the target, and no hot
 					// swapping or fancy proxying.
-					//如果拦截然链为空则直接激活原方法
+					// 如果拦截器链为空则直接激活原方法
 					Object[] argsToUse = AopProxyUtils.adaptArgumentsIfNecessary(method, args);
 					retVal = methodProxy.invoke(target, argsToUse);
 				}
 				else {
 					// We need to create a method invocation...
-					//进入链
-					//CglibMethodInvocation 继承自 ReflectiveMethodInvocation, 执行proceed方法
+					// 进入拦截器链
+					// CglibMethodInvocation 继承自 ReflectiveMethodInvocation, 执行 proceed 方法
 					retVal = new CglibMethodInvocation(proxy, target, method, args, targetClass, chain, methodProxy).proceed();
 				}
 				retVal = processReturnType(proxy, target, method, retVal);

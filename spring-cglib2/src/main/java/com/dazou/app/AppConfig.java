@@ -16,7 +16,7 @@ import javax.sql.DataSource;
  */
 @Configuration
 @ComponentScan("com.dazou")
-@EnableAspectJAutoProxy
+@EnableAspectJAutoProxy(proxyTargetClass = true)
 public class AppConfig {
 
 

@@ -41,7 +41,14 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 	@Override
 	public void registerBeanDefinitions(
 			AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+		// 在包扫描的时候会扫描解析配置类上的 @Import 注解，进而解析这个注解里面的 ImportBeanDefinitionRegistrar 这个类型的类
+		// 然后会执行这个类型的类里面的 registerBeanDefinitions 方法，所以就进入到了这里，这个方法持有了 BeanDefinitionRegistry
+		// 可以动态往 Spring 容器中注册 BeanDefinition
 
+		// 添加这个org.springframework.aop.config.internalAutoProxyCreator 这个 BeanDefinition 到 bdm 中
+		// 是为了让在 refresh() 的 registerBeanPostProcessors(beanFactory);过程中添加了 AnnotationAwareAspectJAutoProxyCreator
+		// 是一个后置处理器，功能就是实现了AOP，加了这个类就相当于添加了 AOP 的功能，AOP 功能就是通过这个类实现的
+		// 具体的回调方法 postProcessAfterInitialization() 在它的父类 AbstractAutoProxyCreator 中
 		AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(registry);
 
 		AnnotationAttributes enableAspectJAutoProxy =

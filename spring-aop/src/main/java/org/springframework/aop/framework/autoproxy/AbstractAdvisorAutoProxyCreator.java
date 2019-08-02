@@ -68,9 +68,9 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	}
 
 	/**
-	 * 对于指定bean的增强方法的获取一定是包含两个步骤的，获取所有的增强以及寻找所有增强中适用于bean的增强并应用。
-	 * 其中findCandidateAdvisors()与findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName)便是做了这两件事情。
-	 * 如果无法找到对应的增强器便返回DO_NOT_PROXY，其中DO_NOT_PROXY=null。
+	 *  对于指定bean的增强方法的获取一定是包含两个步骤的，获取所有的增强以及寻找所有增强中适用于bean的增强并应用。
+	 *  其中findCandidateAdvisors()与findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName)便是做了这两件事情。
+	 *  如果无法找到对应的增强器便返回DO_NOT_PROXY，其中DO_NOT_PROXY=null。
 	 */
 
 	@Override
@@ -96,9 +96,9 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @see #extendAdvisors
 	 */
 	protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
-		//获取所有的增强，这个方法很复杂，提取了带有@Aspect注解或是在配置文件中配置了通知的信息
+		// 获取所有的增强，这个方法很复杂，提取了带有 @Aspect 注解或是在配置文件中配置了通知的信息
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
-		//寻找所有增强中适用于bean的增强并应用
+		// 寻找所有增强中适用于bean的增强并应用
 		List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
 		extendAdvisors(eligibleAdvisors);
 		if (!eligibleAdvisors.isEmpty()) {
@@ -112,7 +112,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @return the List of candidate Advisors
 	 */
 	/**
-	 *  加载配置文件中的 AOP 声明
+	 * 加载配置文件中的 AOP 声明
 	 */
 	protected List<Advisor> findCandidateAdvisors() {
 		Assert.state(this.advisorRetrievalHelper != null, "No BeanFactoryAdvisorRetrievalHelper available");
@@ -133,7 +133,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 
 		ProxyCreationContext.setCurrentProxiedBeanName(beanName);
 		try {
-			//过滤已经得到的 advisors,即找到合适给定bean的 advisors
+			// 过滤已经得到的 advisors,即找到合适给定bean的 advisors
 			return AopUtils.findAdvisorsThatCanApply(candidateAdvisors, beanClass);
 		}
 		finally {

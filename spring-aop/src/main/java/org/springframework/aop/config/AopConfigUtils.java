@@ -97,6 +97,7 @@ public abstract class AopConfigUtils {
 	public static BeanDefinition registerAspectJAnnotationAutoProxyCreatorIfNecessary(
 			BeanDefinitionRegistry registry, @Nullable Object source) {
 
+		// 动态注册 AnnotationAwareAspectJAutoProxyCreator 这个类给 Spring 容器
 		return registerOrEscalateApcAsRequired(AnnotationAwareAspectJAutoProxyCreator.class, registry, source);
 	}
 
@@ -122,25 +123,28 @@ public abstract class AopConfigUtils {
 
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 
-		//如果已经存在了自动代理创建器且存在的自动代理创建器旦与现在的不一致，那么需要根据优先级来判断到底需要使用哪一个
+		//如果已经存在了自动代理创建器且存在的自动代理创建器但与现在的不一致，那么需要根据优先级来判断到底需要使用哪一个
 		if (registry.containsBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME)) {
 			BeanDefinition apcDefinition = registry.getBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME);
 			if (!cls.getName().equals(apcDefinition.getBeanClassName())) {
 				int currentPriority = findPriorityForClass(apcDefinition.getBeanClassName());
 				int requiredPriority = findPriorityForClass(cls);
 				if (currentPriority < requiredPriority) {
-					//／改变 bean 最重要的就是改变 bean 所对应的 className 属性,然后会调用设置非类名对应的Class进行实例化
+					// 改变 bean 最重要的就是改变 bean 所对应的 className 属性,然后会调用设置类名对应的Class进行实例化
 					apcDefinition.setBeanClassName(cls.getName());
 				}
 			}
 			return null;
 		}
 
-		// 不存在已创建的，在新创建
+		// 不存在已创建的，就创建一个新的，这里首先通过传入的 Class 创建了一个 BeanDefinition
 		RootBeanDefinition beanDefinition = new RootBeanDefinition(cls);
 		beanDefinition.setSource(source);
+		// 设置优先级为最高，数字越小优先级越高
 		beanDefinition.getPropertyValues().add("order", Ordered.HIGHEST_PRECEDENCE);
+		// 设置 Role 为 2，即为 Spring 内部类
 		beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+		// 往 Spring 容器中添加这个 BeanDefinition，即将这个 BeanDefinition 加入到 BeanDefinitionMap 中
 		registry.registerBeanDefinition(AUTO_PROXY_CREATOR_BEAN_NAME, beanDefinition);
 		return beanDefinition;
 	}
